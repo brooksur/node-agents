@@ -4,7 +4,7 @@ import {
   ChatCompletionTool,
 } from "openai/resources";
 import * as readline from "readline";
-
+import * as fs from "fs";
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -16,14 +16,15 @@ const RESET = "\x1b[0m";
 
 // Tool types for memory operations
 enum MemoryToolTypes {
-  ADD_NOTE = "addNote",
+  NOTE_TO_MEMORY = "noteToMemory",
+  NOTE_TO_FILE = "noteToFile",
 }
 
-// Tool definition for adding notes
-const addNoteToMemoryTool: ChatCompletionTool = {
+// Tool definition for adding notes to memory
+const noteToMemoryTool: ChatCompletionTool = {
   type: "function",
   function: {
-    name: MemoryToolTypes.ADD_NOTE,
+    name: MemoryToolTypes.NOTE_TO_MEMORY,
     description: "Add a note to your list of notes",
     parameters: {
       type: "object",
@@ -31,6 +32,25 @@ const addNoteToMemoryTool: ChatCompletionTool = {
         note: {
           type: "string",
           description: "The note to add to your list of notes",
+        },
+      },
+      required: ["note"],
+    },
+  },
+};
+
+// Tool definition for adding notes to a file
+const noteToFileTool: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: MemoryToolTypes.NOTE_TO_FILE,
+    description: "Add a note to a file",
+    parameters: {
+      type: "object",
+      properties: {
+        note: {
+          type: "string",
+          description: "The note to add to the file",
         },
       },
       required: ["note"],
@@ -54,6 +74,31 @@ export async function memoryAgent() {
     return new Promise((resolve) => rl.question(query, resolve));
   };
 
+  // Helper function to add a note to memory
+  const addNoteToMemory = (note: string) => {
+    noteMemory.push(note);
+    console.log(GREEN + "Note added to memory ⭐️" + RESET);
+    console.log(GREEN + note + RESET);
+  };
+
+  // Helper function to add a note to a file
+  const addNoteToFile = (note: string) => {
+    fs.appendFileSync("notes.txt", note + "\n");
+    console.log(GREEN + "Note added to file ⭐️" + RESET);
+    console.log(GREEN + note + RESET);
+  };
+
+  // Helper function to read notes from memory
+  const readNotesFromMemory = () => {
+    return noteMemory.map((note) => `- ${note}`).join("\n");
+  };
+
+  // Helper function to read notes from a file
+  const readNotesFromFile = () => {
+    const notes = fs.readFileSync("notes.txt", "utf8");
+    return notes;
+  };
+
   while (true) {
     const userInput = await askQuestion("You: ");
 
@@ -64,14 +109,21 @@ export async function memoryAgent() {
     }
 
     // Format notes for system prompt
-    const noteMemoryList = noteMemory.map((note) => `- ${note}`).join("\n");
     const systemPrompt = `
       You are a helpful assistant.
-      You have a list of notes.
-      You can add notes to your list of notes.
-      Here is your list of notes: 
-      
-      ${noteMemoryList}
+      -------
+      Short Term Memory:
+      You have a list of notes in short term memory, that are discarded from session to session.
+      You can add notes to your short term memory by using the "noteToMemory" tool.
+      Here are your notes:
+      ${readNotesFromMemory()}
+      -------
+      Long Term Memory:
+      You have a list of notes in long term memory, that are saved to a file. These notes are persisted from session to session.
+      You can add notes to your long term memory by using the "noteToFile" tool.
+      Here are your notes:
+      ${readNotesFromFile()}
+      -------
     `;
 
     // Add user input to chat history
@@ -81,7 +133,7 @@ export async function memoryAgent() {
     const firstResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "system", content: systemPrompt }, ...chatMemory],
-      tools: [addNoteToMemoryTool],
+      tools: [noteToMemoryTool, noteToFileTool],
       tool_choice: "auto",
     });
 
@@ -92,11 +144,10 @@ export async function memoryAgent() {
     if (firstMessage.tool_calls) {
       firstMessage.tool_calls.forEach((toolCall) => {
         switch (toolCall.function.name) {
-          case MemoryToolTypes.ADD_NOTE:
+          // Add note to memory
+          case MemoryToolTypes.NOTE_TO_MEMORY: {
             const args = JSON.parse(toolCall.function.arguments);
-            noteMemory.push(args.note);
-            console.log(GREEN + "Note added to memory ⭐️" + RESET);
-            console.log(GREEN + args.note + RESET);
+            addNoteToMemory(args.note);
             const toolCallMessage: ChatCompletionMessageParam = {
               role: "tool",
               content: `Note added to memory ⭐️: ${args.note}`,
@@ -104,6 +155,19 @@ export async function memoryAgent() {
             };
             chatMemory.push(toolCallMessage);
             break;
+          }
+          // Add note to file
+          case MemoryToolTypes.NOTE_TO_FILE: {
+            const args = JSON.parse(toolCall.function.arguments);
+            addNoteToFile(args.note);
+            const toolCallMessage: ChatCompletionMessageParam = {
+              role: "tool",
+              content: `Note added to file ⭐️: ${args.note}`,
+              tool_call_id: toolCall.id,
+            };
+            chatMemory.push(toolCallMessage);
+            break;
+          }
         }
       });
 
@@ -117,8 +181,9 @@ export async function memoryAgent() {
         console.log(GREEN + "AI:" + finalMessage.content + RESET);
         chatMemory.push({ role: "assistant", content: finalMessage.content });
       }
-    } else if (firstMessage.content) {
-      // Display response if no tool was used
+    }
+    // Display response if no tool was used
+    else if (firstMessage.content) {
       console.log(GREEN + "AI:" + firstMessage.content + RESET);
     }
   }
