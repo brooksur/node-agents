@@ -8,10 +8,14 @@ This repository explores the concept of AI agents implemented in Node.js. Each a
 
 Located in `agents/memory.agent.ts`
 
-- Implements a conversational agent with memory capabilities
-- Uses OpenAI's GPT models for processing
-- Maintains chat history and note-taking functionality
-- Demonstrates function calling with memory operations
+- Implements a conversational agent with dual memory system:
+  - Short-term memory (in-session notes)
+  - Long-term memory (persistent notes in file)
+- Uses OpenAI's GPT-4 for processing
+- Maintains chat history and context
+- Features tool-based memory operations:
+  - `noteToMemory`: Stores notes in session memory
+  - `noteToFile`: Persists notes to disk
 
 ## Core Concepts
 
@@ -22,21 +26,22 @@ Autonomous software entities that can:
 - Process natural language input
 - Make decisions based on context
 - Maintain state and memory
-- Interact with external tools and APIs
-- Execute actions based on user input
+- Execute actions via tool functions
+- Persist data across sessions
 
 ### OpenAI Integration
 
 - Uses OpenAI's Chat Completion API
-- Supports function calling for tool integration
+- Implements function calling for tools
 - Maintains conversation context
 - Handles tool execution and responses
 
 ### Memory Management
 
+- Dual memory system:
+  - Short-term: Session-based note storage
+  - Long-term: File-based persistent storage
 - Chat history tracking
-- Note-taking capabilities
-- Persistent memory across conversations
 - Context-aware responses
 
 ## Technical Details
@@ -48,25 +53,26 @@ Autonomous software entities that can:
 │   └── memory.agent.ts    # Memory-enabled conversational agent
 ├── config/
 │   └── env.ts            # Environment configuration
-├── index.ts              # Main entry point
-├── package.json          # Project dependencies
-└── tsconfig.json         # TypeScript configuration
+├── .env.local           # Local environment variables
+├── index.ts             # Main entry point
+└── package.json         # Project dependencies
 ```
 
 ### Key Features
 
 - TypeScript implementation
-- Modular agent architecture
+- Tool-based architecture
 - Environment-based configuration
 - Interactive console interface
-- Tool integration framework
+- Colored console output
+- Persistent storage support
 
 ### Dependencies
 
-- OpenAI SDK for API interactions
-- TypeScript for type safety
-- Node.js readline for user interaction
-- Environment variable management
+- OpenAI SDK
+- TypeScript
+- Node.js readline
+- File system operations
 
 ## Getting Started
 
@@ -75,11 +81,12 @@ Autonomous software entities that can:
    ```bash
    npm install
    ```
-3. Set up environment variables:
+3. Set up environment variables in `.env.local`:
    ```
    OPENAI_API_KEY=your_api_key_here
+   DATABASE_URL=your_database_url
    ```
-4. Run an agent:
+4. Run the memory agent:
    ```bash
    npm start
    ```
