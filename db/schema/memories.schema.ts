@@ -1,4 +1,12 @@
-import { index, integer, pgTable, text, timestamp, uuid, vector } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  vector,
+} from "drizzle-orm/pg-core";
 
 export const memoriesTable = pgTable(
   "memories",
@@ -6,17 +14,18 @@ export const memoriesTable = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     content: text("content").notNull(),
     tokenCount: integer("token_count").notNull(),
-    embedding: vector("embedding", {
-      dimensions: 256
-    }),
+    embedding: vector("embedding", { dimensions: 256 }).notNull(), // Make sure this matches
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
       .notNull()
       .defaultNow()
-      .$onUpdate(() => new Date())
+      .$onUpdate(() => new Date()),
   },
   (table) => ({
-    embedding_index: index("embedding_index").using("hnsw", table.embedding.op("vector_cosine_ops"))
+    embedding_index: index("embedding_index").using(
+      "hnsw",
+      table.embedding.op("vector_cosine_ops")
+    ),
   })
 );
 

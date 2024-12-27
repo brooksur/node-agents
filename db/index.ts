@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { customersTable } from "./schema/customers-schema";
-import { memoriesTable } from "./schema/memories-schema";
+import { customersTable } from "./schema/customers.schema";
+import { memoriesTable } from "./schema/memories.schema";
 
 const databaseUrl = process.env.DATABASE_URL;
 
