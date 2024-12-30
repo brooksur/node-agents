@@ -4,6 +4,14 @@ import axios from "axios";
 import * as readline from "readline";
 import "@/config/env";
 
+/**
+ * News agent
+ *
+ * The goal of the news agent is to provide recent news articles to the user.
+ * The agent uses the NewsData.io API to obtain news articles, and uses OpenAI
+ * for tool calling and providing responses to the user
+ */
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -30,41 +38,17 @@ const newsAgentTools: Record<NewsAgentTools, ChatCompletionTool> = {
     type: "function",
     function: {
       name: NewsAgentTools.GET_NEWS,
-      description: "Get latest news articles with various filters",
+      description: "Get recent news articles about a specific topic",
       parameters: {
         type: "object",
         properties: {
-          q: {
-            type: "string",
-            description: "Keywords to search in title and content (optional)",
-          },
-          qInTitle: {
-            type: "string",
-            description: "Keywords to search in title only (optional)",
-          },
-          category: {
+          query: {
             type: "string",
             description:
-              "News categories (comma-separated): business, entertainment, environment, food, health, politics, science, sports, technology, top, tourism, world",
-          },
-          country: {
-            type: "string",
-            description:
-              "Country codes (comma-separated) e.g., 'us,gb,au' (optional)",
-          },
-          language: {
-            type: "string",
-            description:
-              "Language codes (comma-separated) e.g., 'en,es' (optional)",
-            default: "en",
-          },
-          size: {
-            type: "number",
-            description: "Number of articles to return (1-50)",
-            default: 10,
+              "The topic to search news for e.g., 'bitcoin', 'climate change'",
           },
         },
-        required: [],
+        required: ["query"],
       },
     },
   },
@@ -79,44 +63,31 @@ interface NewsAPIResponse {
     description: string;
     pubDate: string;
     source_id: string;
-    category?: string[];
   }>;
 }
 
 const newsAgentFunctions: Record<NewsAgentTools, Function> = {
-  [NewsAgentTools.GET_NEWS]: async ({
-    q,
-    qInTitle,
-    country,
-    category,
-    language = "en",
-    size = 10,
-  }) => {
-    const baseUrl = "https://newsdata.io/api/1/latest";
+  [NewsAgentTools.GET_NEWS]: async (query: string) => {
+    console.log("Getting news for query:", query);
+    const baseUrl = "https://newsdata.io/api/1/news";
     const queryParams = new URLSearchParams({
       apikey: process.env.NEWS_DATA_API_KEY!,
-      language,
-      size: size.toString(),
+      q: query,
+      language: "en",
     });
 
-    if (q) queryParams.append("q", q);
-    if (qInTitle) queryParams.append("qInTitle", qInTitle);
-    if (country) queryParams.append("country", country);
-    if (category) queryParams.append("category", category);
-
     try {
-      const response = await axios.get<NewsAPIResponse>(
+      const { data } = await axios.get<NewsAPIResponse>(
         `${baseUrl}?${queryParams.toString()}`
       );
-      const { data } = response;
 
       if (data.status !== "success" || !data.results?.length) {
-        return "No news articles found for the specified criteria.";
+        return "No news articles found for this topic.";
       }
 
-      // Format the news articles
+      // Format the top 5 news articles
       const newsInfo = data.results
-        .slice(0, size)
+        .slice(0, 5)
         .map(
           (article, index) => `
           ${index + 1}. ${article.title}
@@ -124,24 +95,14 @@ const newsAgentFunctions: Record<NewsAgentTools, Function> = {
           Source: ${article.source_id}
           Published: ${article.pubDate}
           Read more: ${article.link}
-          ${
-            article.category ? `Categories: ${article.category.join(", ")}` : ""
-          }
           `
         )
         .join("\n---\n");
 
-      return `Found ${data.totalResults} articles. Here are the top ${size}:\n${newsInfo}`;
+      return `Found ${data.totalResults} articles. Here are the top 5:\n${newsInfo}`;
     } catch (error) {
-      console.error("Full error:", error);
-      if (axios.isAxiosError(error)) {
-        const errorMessage =
-          error.response?.data?.results?.message ||
-          error.response?.data?.message ||
-          error.message;
-        return `Error fetching news: ${errorMessage}`;
-      }
-      return "An error occurred while fetching news";
+      console.error("Error fetching news:", error);
+      return "Sorry, there was an error fetching the news.";
     }
   },
 };
@@ -181,27 +142,8 @@ export async function newsAgent(state?: NewsAgentState) {
     messages: [
       {
         role: "system",
-        content: `You are a helpful news assistant that can search for news articles using the following capabilities:
-
-        Core search features:
-        - Search by keywords in title and content (q parameter)
-        - Search by keywords in title only (qInTitle parameter)
-        - Filter by categories (business, technology, sports, entertainment, health, science, etc.)
-        - Filter by countries (using country codes like us, gb, au)
-        - Filter by language (en, es, fr, etc.)
-        - Control number of results (1-50 articles)
-
-        When responding:
-        1. If the search returns results, summarize them naturally
-        2. If there are no results, suggest alternative search terms
-        3. Keep responses conversational and helpful
-        4. Don't ask for dates or timeframes - the API provides recent news only
-
-        Examples of valid queries:
-        - "Show me technology news from the US"
-        - "Get me sports headlines in Spanish"
-        - "Find news about climate change"
-        - "Show the top 5 business news stories from Germany"`,
+        content:
+          "You are a helpful news assistant. You can find recent news articles about any topic.",
       },
       ...currentState.conversationHistory,
     ],
@@ -212,9 +154,9 @@ export async function newsAgent(state?: NewsAgentState) {
   if (response.choices[0].message.tool_calls) {
     for (const toolCall of response.choices[0].message.tool_calls) {
       if (toolCall.function.name === NewsAgentTools.GET_NEWS) {
-        const args = JSON.parse(toolCall.function.arguments);
+        const { query } = JSON.parse(toolCall.function.arguments);
         const newsInfo = await newsAgentFunctions[NewsAgentTools.GET_NEWS](
-          args
+          query
         );
 
         // Add assistant's tool call and news info to history
@@ -232,27 +174,8 @@ export async function newsAgent(state?: NewsAgentState) {
     messages: [
       {
         role: "system",
-        content: `You are a helpful news assistant that can search for news articles using the following capabilities:
-
-        Core search features:
-        - Search by keywords in title and content (q parameter)
-        - Search by keywords in title only (qInTitle parameter)
-        - Filter by categories (business, technology, sports, entertainment, health, science, etc.)
-        - Filter by countries (using country codes like us, gb, au)
-        - Filter by language (en, es, fr, etc.)
-        - Control number of results (1-50 articles)
-
-        When responding:
-        1. If the search returns results, summarize them naturally
-        2. If there are no results, suggest alternative search terms
-        3. Keep responses conversational and helpful
-        4. Don't ask for dates or timeframes - the API provides recent news only
-
-        Examples of valid queries:
-        - "Show me technology news from the US"
-        - "Get me sports headlines in Spanish"
-        - "Find news about climate change"
-        - "Show the top 5 business news stories from Germany"`,
+        content:
+          "You are a helpful news assistant. You can find recent news articles about any topic.",
       },
       ...currentState.conversationHistory,
     ],
