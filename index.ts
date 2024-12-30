@@ -1,4 +1,4 @@
 import "@/config/env";
-import { newsAgent } from "@/agents/news.agent";
+import { customerAgent } from "@/agents/customer.agent";
 
-newsAgent();
+customerAgent();
