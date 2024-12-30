@@ -20,100 +20,75 @@ Located in `agents/memory.agent.ts`
   - `noteToDb`: Stores notes in vector database
   - `notesFromDb`: Retrieves relevant notes using semantic search
 
+### Customer Agent
+
+Located in `agents/customer.agent.ts`
+
+- Manages customer database operations through natural language
+- Implements CRUD operations:
+  - Query customers by email
+  - Update customer information
+  - Add new customers
+- Handles refund status and reasoning
+- Maintains conversation history for context
+
+### News Agent
+
+Located in `agents/news.agent.ts`
+
+- Fetches and summarizes recent news articles
+- Integrates with NewsData.io API
+- Features:
+  - Topic-based news search
+  - Article summarization
+  - Source attribution
+  - Publication date tracking
+
+### Weather Agent
+
+Located in `agents/weather.agent.ts`
+
+- Provides detailed weather information
+- Integrates with WeatherAPI
+- Features:
+  - Current weather conditions
+  - Temperature in C° and F°
+  - Humidity and wind information
+  - Precipitation and visibility data
+  - UV index reporting
+
+### Travel Agent
+
+Located in `agents/travel.agent.ts`
+
+- Helps users plan trips with comprehensive itineraries
+- Features:
+  - Flight and hotel search
+  - Attraction recommendations
+  - Restaurant suggestions
+  - Budget management and tracking
+  - Detailed trip planning with cost breakdown
+
 ### Flowise Agents
 
 Located in `agents/flowise/`
 
-#### Prompt Generator Agent
+- Collection of specialized workflow agents:
+  - `prompt-generator.json`: Creates AI system prompts
+  - `search-and-mail-agent.json`: Research and email automation
+  - `social-agent.json`: Social media content creation
+  - `story-generator.json`: Narrative content generation
 
-- Multi-agent system for creating and reviewing AI prompts
-- Components:
-  - Prompt Creator: Crafts system prompts for specific use cases
-  - Prompt Reviewer: Reviews and enhances prompt quality
-- Uses supervisor pattern to coordinate agent interactions
+## Technologies Used
 
-#### Social Media Agent
-
-- Coordinated system for content creation and distribution
-- Components:
-  - Blog Writer: Creates engaging fitness content
-  - Video Script Creator: Adapts blog content for video format
-  - Title Generator: Creates engaging YouTube titles
-  - Social Media Post Creator: Crafts platform-specific posts
-- Demonstrates content repurposing across platforms
-
-#### Story Generator Agent
-
-- Collaborative system for children's story creation
-- Components:
-  - Story Generator: Creates engaging children's stories
-  - Title Generator: Crafts compelling titles for stories
-- Focuses on age-appropriate content (8-12 years)
-
-## Core Concepts
-
-### AI Agents
-
-Autonomous software entities that can:
-
-- Process natural language input
-- Make decisions based on context
-- Maintain state and memory
-- Execute actions via tool functions
-- Persist data across sessions
-
-### Multi-Agent Systems
-
-- Supervisor Pattern: Coordinates multiple specialized agents
-- Agent Communication: Structured information passing between agents
-- Task Distribution: Breaking complex tasks into specialized subtasks
-- Sequential Processing: Coordinated workflow between agents
-
-### Memory Management
-
-- Multi-tier memory system:
-  - Short-term: Session-based note storage
-  - Long-term: File-based persistent storage
-  - Vector Database: Semantic search capabilities
-- Chat history tracking
-- Context-aware responses
-
-### OpenAI Integration
-
-- Uses OpenAI's Chat Completion API
-- Implements function calling for tools
-- Maintains conversation context
-- Handles tool execution and responses
-
-## Technical Details
-
-### Project Structure
-
-```
-├── agents/
-│   └── memory.agent.ts    # Memory-enabled conversational agent
-├── config/
-│   └── env.ts            # Environment configuration
-├── .env.local           # Local environment variables
-├── index.ts             # Main entry point
-└── package.json         # Project dependencies
-```
-
-### Key Features
-
-- TypeScript implementation
-- Tool-based architecture
-- Environment-based configuration
-- Interactive console interface
-- Colored console output
-- Persistent storage support
-
-### Dependencies
-
-- OpenAI SDK
+- OpenAI GPT-4
 - TypeScript
-- Node.js readline
-- File system operations
+- Node.js
+- Various APIs:
+  - NewsData.io
+  - WeatherAPI
+  - Vector databases
+- Flowise for workflow automation
 
 ## Getting Started
 
@@ -127,7 +102,22 @@ Autonomous software entities that can:
    OPENAI_API_KEY=your_api_key_here
    DATABASE_URL=your_database_url
    ```
-4. Run the memory agent:
+4. Set up the database (if using memory agent with vector storage):
+   ```bash
+   npm run db:generate
+   npm run db:migrate
+   ```
+5. Start the application:
    ```bash
    npm start
    ```
+
+## Available Scripts
+
+- `npm start`: Runs the main application using tsx
+- `npm run db:generate`: Generates database migrations using Drizzle Kit
+- `npm run db:migrate`: Applies database migrations
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
